@@ -118,6 +118,33 @@ There are two options to deploy the demo, depending on your access privileges to
 10. Authorize the login when a popup appears in your browser.
 11. Follow the prompts in your terminal: Answer “Yes” for the Terraform approval.
 
+### Free Trial (single project, no organization, $300 credit)
+A lightweight deployment for a [GCP Free Trial](https://cloud.google.com/free) account (one project, no organization, restricted quotas). It is controlled by the Terraform variable `deploy_lightweight` (default `true`).
+
+**What is deployed:** BigQuery (datasets, tables, routines and the `vertex-ai`, `biglake-connection` and `spark-connection` connections), Vertex AI / Colab Enterprise (notebooks plus an `e2-highmem-4` runtime with a 100 GB disk, no GPUs), Looker Studio views/routines, Pub/Sub, Cloud Storage and the serverless Spark plumbing (temp bucket, service account, serverless subnet and firewall).
+
+**What is NOT deployed:** Cloud Composer, Dataflow, Spanner, Data Fusion, Datastream, Cloud SQL, Compute Engine VMs, the Data Transfer Service public dataset copy (650-700M rows), OMNI (AWS/Azure) and any Dataproc cluster. The stored procedures that depend on these services are skipped. Because Composer is not deployed, its Airflow DAGs (including the data download/hydration DAGs) are not uploaded or run.
+
+1. Create a project by hand in the Cloud Console (Organization = "No organization") and link it to your Free Trial billing account.
+2. Make sure your user has the `Owner` role on the project (the project creator has it by default).
+3. Edit `deploy-use-existing-project-non-org-admin.sh` and set:
+   - `gcp_account_name` (your email address)
+   - `project_id`
+   - `project_number` (`gcloud projects describe <project_id> --format="value(projectNumber)"`)
+   - `deploy_lightweight="true"` (the default; it is passed as `-var="deploy_lightweight=true"`)
+   - The org policy steps in the script do not apply to a project with no organization, so you can skip them.
+4. Run:
+   ```
+   source deploy-use-existing-project-non-org-admin.sh
+   ```
+
+**Using the demo in Free Trial mode:**
+- **Lakehouse streaming:** uses a Pub/Sub BigQuery Subscription from the public topic `projects/pubsub-public-data/topics/taxirides-realtime` into BigLake managed tables (no Dataflow or Composer). See [BigLake-Demo.ipynb](colab-enterprise/BigLake-Demo.ipynb) and [sp_demo_biglake_managed_tables.sql](sql-scripts/taxi_dataset/sp_demo_biglake_managed_tables.sql). Delete the subscription when you are done so it stops ingesting.
+- **Looker:** uses Looker Studio (external and free) over the `looker_*` BigQuery views (see `sp_create_looker_studio_view.sql`).
+- **Spark:** runs serverless through BigQuery Spark stored procedures (`spark-connection`), for example `sp_iceberg_spark_transformation`, `sp_demo_bigspark_read_bq_save_hive_on_data_lake`, `sp_demo_bigspark_read_csv_load_bq_table` and `sp_demo_biglake_metastore_security`. There is no Dataproc cluster and no Composer.
+- **Colab Enterprise:** the runtime bills while it runs. Stop or delete it when idle (Colab Enterprise | Runtimes) to save credits.
+- To deploy the full demo later on a paid account, set `deploy_lightweight="false"`.
+
 ### To deploy through a Google Cloud Compute VM
 1. Create a new Compute VM with a Public IP address or Internet access on a Private IP
    - The default VM is fine (e.g.)

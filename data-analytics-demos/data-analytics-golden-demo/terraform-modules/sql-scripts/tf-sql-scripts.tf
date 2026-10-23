@@ -67,6 +67,17 @@ variable "bigquery_rideshare_llm_enriched_dataset" {}
 variable "bigquery_rideshare_llm_curated_dataset" {}
 variable "bigquery_cleanroom_dataset" {}
 
+# When true (free-trial friendly), skip stored procedures that depend on removed services
+# (Datastream, Dataflow, Spanner, Data Transfer Service/Composer, OMNI and the shared demo project)
+variable "deploy_lightweight" {
+  type    = bool
+  default = true
+}
+
+locals {
+  heavy_service_count = var.deploy_lightweight ? 0 : 1
+}
+
 # Hardcoded
 variable "bigquery_taxi_dataset" {
   type        = string
@@ -112,6 +123,7 @@ resource "google_bigquery_routine" "sproc_sp_create_demo_dataform" {
 # sp_create_datastream_cdc_data
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_create_datastream_cdc_data" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.bigquery_taxi_dataset
   routine_id      = "sp_create_datastream_cdc_data"
@@ -288,6 +300,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_biglake_unstructured_data" {
 # sp_demo_biglake_query_acceleration
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_biglake_query_acceleration" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.bigquery_taxi_dataset
   routine_id      = "sp_demo_biglake_query_acceleration"
@@ -365,6 +378,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_bigquery_queries" {
 # sp_demo_bigsearch
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_bigsearch" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.bigquery_taxi_dataset
   routine_id      = "sp_demo_bigsearch"
@@ -435,6 +449,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_data_quality_table" {
 # sp_demo_data_transfer_service
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_data_transfer_service" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.bigquery_taxi_dataset
   routine_id      = "sp_demo_data_transfer_service"
@@ -458,6 +473,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_data_transfer_service" {
 # sp_demo_datastream_private_ip
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_datastream_private_ip" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.bigquery_taxi_dataset
   routine_id      = "sp_demo_datastream_private_ip"
@@ -481,6 +497,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_datastream_private_ip" {
 # sp_demo_datastream_public_ip
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_datastream_public_ip" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.bigquery_taxi_dataset
   routine_id      = "sp_demo_datastream_public_ip"
@@ -619,6 +636,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_external_function" {
 # sp_demo_federated_query
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_federated_query" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.bigquery_taxi_dataset
   routine_id      = "sp_demo_federated_query"
@@ -885,6 +903,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_security" {
 # sp_demo_taxi_streaming_data
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_taxi_streaming_data" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.bigquery_taxi_dataset
   routine_id      = "sp_demo_taxi_streaming_data"
@@ -1202,6 +1221,7 @@ resource "google_bigquery_routine" "sproc_create_product_deliveries_streaming" {
 # sp_demo_aws_omni_create_tables
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_create_tables" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.aws_omni_biglake_dataset_name
   routine_id      = "sp_demo_aws_omni_create_tables"
@@ -1224,6 +1244,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_create_tables" {
 # sp_demo_aws_omni_delta_lake_native
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_delta_lake_native" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.aws_omni_biglake_dataset_name
   routine_id      = "sp_demo_aws_omni_delta_lake_native"
@@ -1246,6 +1267,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_delta_lake_native" {
 # sp_demo_aws_omni_delta_lake_workaround
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_delta_lake_workaround" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.aws_omni_biglake_dataset_name
   routine_id      = "sp_demo_aws_omni_delta_lake_workaround"
@@ -1267,6 +1289,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_delta_lake_workaround
 # sp_demo_aws_omni_queries_cross_cloud
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_queries_cross_cloud" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.aws_omni_biglake_dataset_name
   routine_id      = "sp_demo_aws_omni_queries_cross_cloud"
@@ -1296,6 +1319,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_queries_cross_cloud" 
 # sp_demo_aws_omni_queries
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_queries" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.aws_omni_biglake_dataset_name
   routine_id      = "sp_demo_aws_omni_queries"
@@ -1319,6 +1343,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_queries" {
 # sp_demo_aws_omni_security_cls
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_security_cls" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.aws_omni_biglake_dataset_name
   routine_id      = "sp_demo_aws_omni_security_cls"
@@ -1342,6 +1367,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_security_cls" {
 # sp_demo_aws_omni_security_rls
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_security_rls" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.aws_omni_biglake_dataset_name
   routine_id      = "sp_demo_aws_omni_security_rls"
@@ -1372,6 +1398,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_aws_omni_security_rls" {
 # sp_demo_azure_omni_create_tables
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_create_tables" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.azure_omni_biglake_dataset_name
   routine_id      = "sp_demo_azure_omni_create_tables"
@@ -1393,6 +1420,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_create_tables" {
 # sp_demo_azure_omni_delta_lake_native
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_delta_lake_native" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.azure_omni_biglake_dataset_name
   routine_id      = "sp_demo_azure_omni_delta_lake_native"
@@ -1415,6 +1443,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_delta_lake_native" 
 # sp_demo_azure_omni_delta_lake_workaround
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_delta_lake_workaround" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.azure_omni_biglake_dataset_name
   routine_id      = "sp_demo_azure_omni_delta_lake_workaround"
@@ -1436,6 +1465,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_delta_lake_workarou
 # sp_demo_azure_omni_queries_cross_cloud
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_queries_cross_cloud" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.azure_omni_biglake_dataset_name
   routine_id      = "sp_demo_azure_omni_queries_cross_cloud"
@@ -1464,6 +1494,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_queries_cross_cloud
 # sp_demo_azure_omni_queries
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_queries" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.azure_omni_biglake_dataset_name
   routine_id      = "sp_demo_azure_omni_queries"
@@ -1486,6 +1517,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_queries" {
 # sp_demo_azure_omni_security_cls
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_security_cls" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.azure_omni_biglake_dataset_name
   routine_id      = "sp_demo_azure_omni_security_cls"
@@ -1508,6 +1540,7 @@ resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_security_cls" {
 # sp_demo_azure_omni_security_rls
 ####################################################################################
 resource "google_bigquery_routine" "sproc_sp_demo_azure_omni_security_rls" {
+  count           = local.heavy_service_count
   project         = var.project_id
   dataset_id      = var.azure_omni_biglake_dataset_name
   routine_id      = "sp_demo_azure_omni_security_rls"

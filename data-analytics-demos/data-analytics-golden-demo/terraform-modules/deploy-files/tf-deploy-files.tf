@@ -51,6 +51,17 @@ variable "bigquery_region" {}
 variable "gcs_rideshare_lakehouse_raw_bucket" {}
 variable "cloud_run_service_rideshare_plus_website_url" {}
 
+# When true (free-trial friendly), Composer is not deployed, so no Airflow DAGs/data are uploaded
+# and the Dataflow streaming job script is skipped
+variable "deploy_lightweight" {
+  type    = bool
+  default = true
+}
+
+locals {
+  heavy_service_count = var.deploy_lightweight ? 0 : 1
+}
+
 variable "bigquery_taxi_dataset" {
   type        = string
   default     = "taxi_dataset"
@@ -78,6 +89,7 @@ locals {
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_step-01-taxi-data-download" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/step-01-taxi-data-download.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/step-01-taxi-data-download.py"
@@ -86,6 +98,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_step-01-taxi-data-do
     ]  
 }
 resource "google_storage_bucket_object" "deploy_airflow_dag_step-01-taxi-data-download-quick-copy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/step-01-taxi-data-download-quick-copy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/step-01-taxi-data-download-quick-copy.py"
@@ -97,6 +110,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_step-01-taxi-data-do
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_step-02-taxi-data-processing" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/step-02-taxi-data-processing.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/step-02-taxi-data-processing.py"
@@ -105,6 +119,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_step-02-taxi-data-pr
     ]  
 }
 resource "google_storage_bucket_object" "deploy_airflow_dag_step-02-taxi-data-processing-quick-copy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/step-02-taxi-data-processing-quick-copy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/step-02-taxi-data-processing-quick-copy.py"
@@ -116,6 +131,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_step-02-taxi-data-pr
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_step-03-hydrate-tables" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/step-03-hydrate-tables.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/step-03-hydrate-tables.py"
@@ -126,6 +142,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_step-03-hydrate-tabl
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataflow-start-streaming-job" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataflow-start-streaming-job.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataflow-start-streaming-job.py"
@@ -136,6 +153,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataflow-star
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-dataprofile-ridehshare-llm" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-dataprofile-ridehshare-llm.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-dataprofile-ridehshare-llm.py"
@@ -146,6 +164,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-data
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_bash_dataplex_dataprofile_ridehshare_llm" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/bash_dataplex_dataprofile_ridehshare_llm.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/bash_dataplex_dataprofile_ridehshare_llm.sh"
@@ -156,6 +175,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_bash_dataplex_datap
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-dataprofile-taxi" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-dataprofile-taxi.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-dataprofile-taxi.py"
@@ -166,6 +186,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-data
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_bash_dataplex_dataprofile_taxi" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/bash_dataplex_dataprofile_taxi.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/bash_dataplex_dataprofile_taxi.sh"
@@ -176,6 +197,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_bash_dataplex_datap
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-dataprofile-thelook" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-dataprofile-thelook.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-dataprofile-thelook.py"
@@ -186,6 +208,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-data
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_bash_dataplex_dataprofile_thelook" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/bash_dataplex_dataprofile_thelook.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/bash_dataplex_dataprofile_thelook.sh"
@@ -196,6 +219,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_bash_dataplex_datap
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-dataprofile-rideshare-lakehouse" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-dataprofile-rideshare-lakehouse.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-dataprofile-rideshare-lakehouse.py"
@@ -206,6 +230,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-data
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_bash_dataplex_dataprofile_ridehshare_lakehouse" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/bash_dataplex_dataprofile_ridehshare_lakehouse.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/bash_dataplex_dataprofile_ridehshare_lakehouse.sh"
@@ -216,6 +241,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_bash_dataplex_datap
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_public_ip_deploy_postgres" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_datastream_public_ip_deploy_postgres.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_datastream_public_ip_deploy_postgres.sh"
@@ -227,6 +253,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_p
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_public_ip_deploy_datastream" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_datastream_public_ip_deploy_datastream.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_datastream_public_ip_deploy_datastream.sh"
@@ -238,6 +265,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_p
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_public_ip_destroy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_datastream_public_ip_destroy.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_datastream_public_ip_destroy.sh"
@@ -249,6 +277,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_p
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_private_ip_deploy_postgres" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_datastream_private_ip_deploy_postgres.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_datastream_private_ip_deploy_postgres.sh"
@@ -260,6 +289,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_p
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_private_ip_deploy_datastream" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_datastream_private_ip_deploy_datastream.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_datastream_private_ip_deploy_datastream.sh"
@@ -271,6 +301,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_p
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_private_ip_destroy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_datastream_private_ip_destroy.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_datastream_private_ip_destroy.sh"
@@ -283,6 +314,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_sample_datastream_p
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_bash_create_spanner_connection" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/bash_create_spanner_connection.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/bash_create_spanner_connection.sh"
@@ -294,6 +326,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_bash_create_spanner
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_bash_deploy_dataplex" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/bash_deploy_dataplex.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/bash_deploy_dataplex.sh"
@@ -315,6 +348,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_bash_deploy_dataple
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_bash_download_rideshare_images" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/bash_download_rideshare_images.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/bash_download_rideshare_images.sh"
@@ -325,6 +359,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_bash_download_rides
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_bash_seed_unstructured_data" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/bash_seed_unstructured_data.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/bash_seed_unstructured_data.sh"
@@ -335,6 +370,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_bash_seed_unstructu
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_cloud_sql_reverse_proxy_template" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/cloud_sql_reverse_proxy_template.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/cloud_sql_reverse_proxy_template.sh"
@@ -345,6 +381,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_cloud_sql_reverse_p
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_postgres_create_datastream_replication" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/postgres_create_datastream_replication.sql"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/postgres_create_datastream_replication.sql"
@@ -356,6 +393,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_postgres_create_dat
 
 # Upload the Airflow "data/template" files
 resource "google_storage_bucket_object" "deploy_airflow_data_postgres_create_schema" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/postgres_create_schema.sql"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/postgres_create_schema.sql"
@@ -370,6 +408,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_postgres_create_sch
 ####################################################################################
 # Upload Deploy DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-deploy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-deploy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-deploy.py"
@@ -381,6 +420,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-depl
 
 # Upload Destroy DAG (Copy the Deploy AS THE Destroy)
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-destroy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-destroy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-deploy.py"
@@ -394,6 +434,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-dest
 # The bucket for the state must be substituted.  We do not want to do this for the other files since we
 # would need to escape all the ${var} with $${var}.
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_backend" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/dataplex/backend.tf"
   bucket = local.local_composer_bucket_name
 
@@ -408,6 +449,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_
 
 # Variables file
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_variables" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/dataplex/variables.tf"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/terraform/dataplex/variables.tf"
@@ -418,6 +460,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_
 
 # Main Resources file
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/dataplex/terraform.tf"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/terraform/dataplex/terraform.tf"
@@ -428,6 +471,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex"
 
 # Bash script to run and install Terraform
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_terraform_dataplex" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_terraform_dataplex.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_terraform_dataplex.sh"
@@ -442,6 +486,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_sample_terraform_da
 ####################################################################################
 # Upload Deploy DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-with-hms-deploy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-with-hms-deploy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-with-hms-deploy.py"
@@ -453,6 +498,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-with
 
 # Upload Destroy DAG (Copy the Deploy AS THE Destroy)
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-with-hms-destroy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-with-hms-destroy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-with-hms-deploy.py"
@@ -466,6 +512,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-with
 # The bucket for the state must be substituted.  We do not want to do this for the other files since we
 # would need to escape all the ${var} with $${var}.
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_backend_with_hms" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/dataplex-with-hms/backend.tf"
   bucket = local.local_composer_bucket_name
 
@@ -480,6 +527,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_
 
 # Variables file
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_variables_with_hms" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/dataplex-with-hms/variables.tf"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/terraform/dataplex-with-hms/variables.tf"
@@ -490,6 +538,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_
 
 # Main Resources file
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_with_hms" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/dataplex-with-hms/terraform.tf"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/terraform/dataplex-with-hms/terraform.tf"
@@ -500,6 +549,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_dataplex_
 
 # Bash script to run and install Terraform
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_terraform_dataplex_with_hms" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_terraform_dataplex_with_hms.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_terraform_dataplex_with_hms.sh"
@@ -514,6 +564,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_sample_terraform_da
 ####################################################################################
 # Upload Deploy DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-terraform-bucket-demo-deploy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-terraform-bucket-demo-deploy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-terraform-bucket-demo-deploy.py"
@@ -525,6 +576,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-terraform-buc
 
 # Upload Destroy DAG (Copy the Deploy AS THE Destroy)
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-terraform-bucket-demo-destroy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-terraform-bucket-demo-destroy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-terraform-bucket-demo-deploy.py"
@@ -538,6 +590,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-terraform-buc
 # The bucket for the state must be substituted.  We do not want to do this for the other files since we
 # would need to escape all the ${var} with $${var}.
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_bucket-demo_backend" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/bucket-demo/backend.tf"
   bucket = local.local_composer_bucket_name
 
@@ -552,6 +605,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_bucket-de
 
 # Variables file
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_bucket-demo_variables" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/bucket-demo/variables.tf"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/terraform/bucket-demo/variables.tf"
@@ -562,6 +616,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_bucket-de
 
 # Main Resources file
 resource "google_storage_bucket_object" "deploy_airflow_data_terraform_bucket-demo" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/terraform/bucket-demo/terraform.tf"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/terraform/bucket-demo/terraform.tf"
@@ -572,6 +627,7 @@ resource "google_storage_bucket_object" "deploy_airflow_data_terraform_bucket-de
 
 # Bash script to run and install Terraform
 resource "google_storage_bucket_object" "deploy_airflow_data_sample_terraform_bucket_demo" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_data_path}/sample_terraform_bucket_demo.sh"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/data/sample_terraform_bucket_demo.sh"
@@ -716,6 +772,7 @@ resource "google_storage_bucket_object" "deploy_pyspark_spark-bigquery-with-depe
 # Upload the Dataflow scripts
 ###################################################################################
 resource "google_storage_bucket_object" "deploy_dataflow_script_streaming-taxi-data" {
+  count  = local.heavy_service_count
   name   = "${local.local_dataflow_source_path}/streaming-taxi-data.py"
   bucket = "raw-${var.storage_bucket}"
   source = "../dataflow/streaming-taxi-data.py"
@@ -1192,6 +1249,7 @@ resource "google_storage_bucket_object" "deploy_sample_data_delta_io_manifest_Ri
 # You need to wait for Airflow to read the DAGs just uploaded
 # Only a few DAGs are uploaded so that we can sync quicker
 resource "time_sleep" "wait_for_airflow_dag_sync" {
+  count  = local.heavy_service_count
   depends_on = [
     google_storage_bucket_object.deploy_airflow_dag_step-01-taxi-data-download-quick-copy,
     google_storage_bucket_object.deploy_airflow_dag_step-02-taxi-data-processing-quick-copy,
@@ -1218,6 +1276,7 @@ resource "time_sleep" "wait_for_airflow_dag_sync" {
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_run-all-dags" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/run-all-dags.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/run-all-dags.py"
@@ -1230,6 +1289,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_run-all-dags" {
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-bigquery-data-transfer-service" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-bigquery-data-transfer-service.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-bigquery-data-transfer-service.py"
@@ -1242,6 +1302,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-bigquery-data
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-bigquery-start-spanner" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-bigquery-start-spanner.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-bigquery-start-spanner.py"
@@ -1254,6 +1315,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-bigquery-star
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-bigquery-stop-spanner" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-bigquery-stop-spanner.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-bigquery-stop-spanner.py"
@@ -1266,6 +1328,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-bigquery-stop
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-create-data-fusion" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-create-data-fusion.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-create-data-fusion.py"
@@ -1279,6 +1342,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-create-data-f
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataflow-stop-streaming-job" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataflow-stop-streaming-job.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataflow-stop-streaming-job.py"
@@ -1291,6 +1355,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataflow-stop
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-public-ip-deploy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-datastream-public-ip-deploy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-datastream-public-ip-deploy.py"
@@ -1303,6 +1368,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-pu
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-public-ip-destroy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-datastream-public-ip-destroy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-datastream-public-ip-destroy.py"
@@ -1315,6 +1381,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-pu
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-public-ip-generate-data" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-datastream-public-ip-generate-data.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-datastream-public-ip-generate-data.py"
@@ -1327,6 +1394,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-pu
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-private-ip-deploy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-datastream-private-ip-deploy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-datastream-private-ip-deploy.py"
@@ -1339,6 +1407,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-pr
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-private-ip-destroy" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-datastream-private-ip-destroy.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-datastream-private-ip-destroy.py"
@@ -1351,6 +1420,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-pr
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-private-ip-generate-data" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-datastream-private-ip-generate-data.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-datastream-private-ip-generate-data.py"
@@ -1363,6 +1433,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-datastream-pr
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-run-data-quality" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-dataplex-run-data-quality.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-dataplex-run-data-quality.py"
@@ -1375,6 +1446,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-dataplex-run-
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-export-taxi-trips-from-bq-to-gcs-cluster" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-export-taxi-trips-from-bq-to-gcs-cluster.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-export-taxi-trips-from-bq-to-gcs-cluster.py"
@@ -1387,6 +1459,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-export-taxi-t
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-export-taxi-trips-from-bq-to-gcs-serverless" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-export-taxi-trips-from-bq-to-gcs-serverless.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-export-taxi-trips-from-bq-to-gcs-serverless.py"
@@ -1399,6 +1472,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-export-taxi-t
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-iceberg-create-tables-update-data" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-iceberg-create-tables-update-data.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-iceberg-create-tables-update-data.py"
@@ -1410,6 +1484,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-iceberg-creat
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-download-images" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-rideshare-download-images.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-rideshare-download-images.py"
@@ -1420,6 +1495,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-dow
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-hydrate-data" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-rideshare-hydrate-data.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-rideshare-hydrate-data.py"
@@ -1440,6 +1516,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-hyd
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-iceberg-serverless" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-rideshare-iceberg-serverless.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-rideshare-iceberg-serverless.py"
@@ -1461,6 +1538,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-ice
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-run-data-quality" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-rideshare-run-data-quality.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-rideshare-run-data-quality.py"
@@ -1482,6 +1560,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-run
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-llm-hydrate-data" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-rideshare-llm-hydrate-data.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-rideshare-llm-hydrate-data.py"
@@ -1492,6 +1571,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-rideshare-llm
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-seed-unstructured-data" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-seed-unstructured-data.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-seed-unstructured-data.py"
@@ -1502,6 +1582,7 @@ resource "google_storage_bucket_object" "deploy_airflow_dag_sample-seed-unstruct
 
 # Upload DAG
 resource "google_storage_bucket_object" "deploy_airflow_dag_sample-sla-miss-task-groups" {
+  count  = local.heavy_service_count
   name   = "${local.local_composer_dag_path}/sample-sla-miss-task-groups.py"
   bucket = local.local_composer_bucket_name
   source = "../cloud-composer/dags/sample-sla-miss-task-groups.py"
