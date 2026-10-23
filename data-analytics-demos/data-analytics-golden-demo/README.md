@@ -123,7 +123,12 @@ A lightweight deployment for a [GCP Free Trial](https://cloud.google.com/free) a
 
 **What is deployed:** BigQuery (datasets, tables, routines and the `vertex-ai`, `biglake-connection` and `spark-connection` connections), Vertex AI / Colab Enterprise (notebooks plus an `e2-highmem-4` runtime with a 100 GB disk, no GPUs), Looker Studio views/routines, Pub/Sub, Cloud Storage and the serverless Spark plumbing (temp bucket, service account, serverless subnet and firewall).
 
-**What is NOT deployed:** Cloud Composer, Dataflow, Spanner, Data Fusion, Datastream, Cloud SQL, Compute Engine VMs, the Data Transfer Service public dataset copy (650-700M rows), OMNI (AWS/Azure) and any Dataproc cluster. The stored procedures that depend on these services are skipped. Because Composer is not deployed, its Airflow DAGs (including the data download/hydration DAGs) are not uploaded or run.
+**What is NOT deployed:** Cloud Composer, Dataflow, Spanner, Data Fusion, Datastream, Cloud SQL, Compute Engine VMs, the Data Transfer Service public dataset copy (650-700M rows), OMNI (AWS/Azure) and any Dataproc cluster. The stored procedures that depend on these services are skipped. Composer's Airflow DAGs are not uploaded.
+
+**Data load without Composer:** [terraform-modules/data-load-lightweight](terraform-modules/data-load-lightweight/lightweight-data-load.sh) runs at the end of `terraform apply` (from the machine running Terraform, using `gcloud` and the BigQuery REST API). It replaces the step-01/02/03, unstructured data, rideshare and rideshare LLM hydration DAGs:
+- Copies only the taxi years in `lightweight_taxi_data_years` (default `["2020","2021","2022"]`, about 3 GB of Parquet and ~100M rows; the rideshare demo needs these years) plus the lookup tables, then calls `sp_create_taxi_external_tables`, `sp_create_taxi_internal_tables`, `sp_create_taxi_biglake_tables` and the thelook procedures. Errors in these steps fail the apply.
+- Optional steps only print warnings if they fail: delta_io sample data, unstructured data/TF models, rideshare images, the rideshare lakehouse (its Iceberg step calls `sp_iceberg_spark_transformation` on BigQuery serverless Spark) and rideshare LLM data. The `*_streaming_view` procedures are skipped because they read the Dataflow streaming tables.
+- Re-run with `terraform apply -replace='module.data-load-lightweight-module[0].null_resource.lightweight_data_load'`, or skip it with `-var="lightweight_load_data=false"`.
 
 1. Create a project by hand in the Cloud Console (Organization = "No organization") and link it to your Free Trial billing account.
 2. Make sure your user has the `Owner` role on the project (the project creator has it by default).

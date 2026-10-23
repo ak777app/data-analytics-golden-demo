@@ -297,6 +297,18 @@ variable "deploy_lightweight" {
   default     = true
 }
 
+variable "lightweight_load_data" {
+  type        = bool
+  description = "Only used when deploy_lightweight = true. Copies the sample data and hydrates the BigQuery tables without Cloud Composer (terraform-modules/data-load-lightweight)."
+  default     = true
+}
+
+variable "lightweight_taxi_data_years" {
+  type        = list(string)
+  description = "Only used when deploy_lightweight = true. NYC taxi years (2019-2025) to load. The rideshare demo needs 2020-2022. Each year of yellow + green Parquet is ~1 GB in GCS."
+  default     = ["2020", "2021", "2022"]
+}
+
 variable "shared_demo_project_id" {
   type        = string
   description = "The name of a shared project that holds the OMNI slots and other sample data "

@@ -338,6 +338,31 @@ module "deploy-files-module" {
 
 
 ####################################################################################
+# Lightweight / Free Trial: load the demo data without Cloud Composer
+####################################################################################
+module "data-load-lightweight-module" {
+  count  = var.deploy_lightweight && var.lightweight_load_data ? 1 : 0
+  source = "../terraform-modules/data-load-lightweight"
+
+  project_id                             = local.local_project_id
+  bigquery_region                        = var.bigquery_region
+  raw_bucket_name                        = module.resources.gcs_raw_bucket
+  processed_bucket_name                  = module.resources.gcs_processed_bucket
+  code_bucket_name                       = module.resources.gcs_code_bucket
+  rideshare_raw_bucket_name              = module.resources.gcs_rideshare_lakehouse_raw_bucket
+  bigquery_rideshare_llm_curated_dataset = module.resources.bigquery_rideshare_llm_curated_dataset
+  curl_impersonation                     = local.local_curl_impersonation
+  taxi_data_years                        = var.lightweight_taxi_data_years
+
+  depends_on = [
+    module.resources,
+    module.sql-scripts,
+    module.deploy-files-module
+  ]
+}
+
+
+####################################################################################
 # Deploy notebooks to Colab -> Create the Dataform repo and files (base64 encoded)
 ####################################################################################
 module "deploy-notebooks-module-create-files" {
