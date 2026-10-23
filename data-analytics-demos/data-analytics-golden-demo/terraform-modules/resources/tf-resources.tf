@@ -69,6 +69,17 @@ variable "azure_omni_biglake_dataset_region" {}
 
 variable "terraform_service_account" {}
 
+# When true (free-trial friendly), Composer, Dataflow, Datastream/Cloud SQL networking,
+# Compute VM firewall rules, OMNI (AWS/Azure) and the Data Transfer Service plumbing are not deployed
+variable "deploy_lightweight" {
+  type    = bool
+  default = true
+}
+
+locals {
+  heavy_service_count = var.deploy_lightweight ? 0 : 1
+}
+
 # Hardcoded
 variable "bigquery_taxi_dataset" {
   type    = string
@@ -224,6 +235,7 @@ resource "google_compute_network" "default_network" {
 }
 
 resource "google_compute_subnetwork" "compute_subnet" {
+  count                    = local.heavy_service_count
   project                  = var.project_id
   name                     = "compute-subnet"
   ip_cidr_range            = "10.1.0.0/16"
@@ -266,7 +278,18 @@ resource "google_compute_firewall" "subnet_firewall_rule" {
 
 # We want a NAT for every region
 locals {
-  distinctRegions = distinct([var.composer_region,
+  # Lightweight: only NAT the regions used by the services that remain (Composer, Spanner, Data Fusion,
+  # Cloud SQL and Datastream regions are skipped)
+  distinctRegions = var.deploy_lightweight ? distinct([var.dataform_region,
+    var.dataplex_region,
+    var.dataproc_region,
+    var.bigquery_non_multi_region,
+    var.vertex_ai_region,
+    var.cloud_function_region,
+    var.data_catalog_region,
+    var.dataproc_serverless_region,
+    var.colab_enterprise_region
+    ]) : distinct([var.composer_region,
     var.dataform_region,
     var.dataplex_region,
     var.dataproc_region,
@@ -315,6 +338,7 @@ resource "google_compute_router_nat" "nat-config-distinct-regions" {
 # Firewall rule for Cloud Shell to SSH in Compute VMs
 # A compute VM will be deployed as a SQL Reverse Proxy for Datastream private connectivity
 resource "google_compute_firewall" "cloud_shell_ssh_firewall_rule" {
+  count   = local.heavy_service_count
   project = var.project_id
   name    = "cloud-shell-ssh-firewall-rule"
   network = google_compute_network.default_network.id
@@ -337,6 +361,7 @@ resource "google_compute_firewall" "cloud_shell_ssh_firewall_rule" {
 
 # Datastream ingress rules for SQL Reverse Proxy communication
 resource "google_compute_firewall" "datastream_ingress_rule_firewall_rule" {
+  count   = local.heavy_service_count
   project = var.project_id
   name    = "datastream-ingress-rule"
   network = google_compute_network.default_network.id
@@ -358,6 +383,7 @@ resource "google_compute_firewall" "datastream_ingress_rule_firewall_rule" {
 
 # Datastream egress rules for SQL Reverse Proxy communication
 resource "google_compute_firewall" "datastream_egress_rule_firewall_rule" {
+  count   = local.heavy_service_count
   project = var.project_id
   name    = "datastream-egress-rule"
   network = google_compute_network.default_network.id
@@ -399,6 +425,7 @@ resource "google_datastream_private_connection" "datastream_cloud-sql-private-co
 # Allocate an IP address range
 # https://cloud.google.com/sql/docs/mysql/configure-private-services-access#allocate-ip-address-range   
 resource "google_compute_global_address" "google_compute_global_address_vpc_main" {
+  count         = local.heavy_service_count
   project       = var.project_id
   name          = "google-managed-services-vpc-main"
   purpose       = "VPC_PEERING"
@@ -415,10 +442,11 @@ resource "google_compute_global_address" "google_compute_global_address_vpc_main
 # Create a private connection
 # https://cloud.google.com/sql/docs/mysql/configure-private-services-access#create_a_private_connection
 resource "google_service_networking_connection" "google_service_networking_connection_default" {
+  count = local.heavy_service_count
   # project                 = var.project_id
   network                 = google_compute_network.default_network.id
   service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.google_compute_global_address_vpc_main.name]
+  reserved_peering_ranges = [google_compute_global_address.google_compute_global_address_vpc_main[0].name]
 
   depends_on = [
     google_compute_network.default_network,
@@ -428,6 +456,7 @@ resource "google_service_networking_connection" "google_service_networking_conne
 
 # Force the service account to get created so we can grant permisssions
 resource "google_project_service_identity" "service_identity_servicenetworking" {
+  count   = local.heavy_service_count
   project = var.project_id
   service = "servicenetworking.googleapis.com"
   depends_on = [
@@ -437,6 +466,7 @@ resource "google_project_service_identity" "service_identity_servicenetworking" 
 }
 
 resource "time_sleep" "service_identity_servicenetworking_time_delay" {
+  count           = local.heavy_service_count
   depends_on      = [google_project_service_identity.service_identity_servicenetworking]
   create_duration = "30s"
 }
@@ -444,9 +474,10 @@ resource "time_sleep" "service_identity_servicenetworking_time_delay" {
 
 # Add permissions for the database to get created
 resource "google_project_iam_member" "iam_service_networking" {
+  count   = local.heavy_service_count
   project = var.project_id
   role    = "roles/servicenetworking.serviceAgent"
-  member  = "serviceAccount:${google_project_service_identity.service_identity_servicenetworking.email}"
+  member  = "serviceAccount:${google_project_service_identity.service_identity_servicenetworking[0].email}"
   #member   = "serviceAccount:service-${var.project_number}@service-networking.iam.gserviceaccount.com "
 
   depends_on = [
@@ -629,6 +660,7 @@ resource "google_dataproc_cluster" "mycluster" {
 
 # Cloud Composer API Service Agent
 resource "google_project_iam_member" "cloudcomposer_account_service_agent" {
+  count   = local.heavy_service_count
   project = var.project_id
   role    = "roles/composer.serviceAgent"
   member  = "serviceAccount:service-${var.project_number}@cloudcomposer-accounts.iam.gserviceaccount.com"
@@ -640,6 +672,7 @@ resource "google_project_iam_member" "cloudcomposer_account_service_agent" {
 
 
 resource "google_compute_subnetwork" "composer_subnet" {
+  count                    = local.heavy_service_count
   project                  = var.project_id
   name                     = "composer-subnet"
   ip_cidr_range            = "10.2.0.0/16"
@@ -654,6 +687,7 @@ resource "google_compute_subnetwork" "composer_subnet" {
 
 
 resource "google_service_account" "composer_service_account" {
+  count        = local.heavy_service_count
   project      = var.project_id
   account_id   = "composer-service-account"
   display_name = "Service Account for Composer Environment"
@@ -661,9 +695,10 @@ resource "google_service_account" "composer_service_account" {
 
 
 resource "google_project_iam_member" "composer_service_account_worker_role" {
+  count   = local.heavy_service_count
   project = var.project_id
   role    = "roles/composer.worker"
-  member  = "serviceAccount:${google_service_account.composer_service_account.email}"
+  member  = "serviceAccount:${google_service_account.composer_service_account[0].email}"
 
   depends_on = [
     google_service_account.composer_service_account
@@ -674,10 +709,11 @@ resource "google_project_iam_member" "composer_service_account_worker_role" {
 # The DAGs will be doing a lot of BQ automation
 # This role can be scaled down once the DAGs are created (the DAGS do high level Owner automation - just for demo purposes)
 resource "google_project_iam_member" "composer_service_account_bq_admin_role" {
+  count = local.heavy_service_count
   # provider= google.service_principal_impersonation
   project = var.project_id
   role    = "roles/owner"
-  member  = "serviceAccount:${google_service_account.composer_service_account.email}"
+  member  = "serviceAccount:${google_service_account.composer_service_account[0].email}"
 
   depends_on = [
     google_project_iam_member.composer_service_account_worker_role
@@ -687,17 +723,19 @@ resource "google_project_iam_member" "composer_service_account_bq_admin_role" {
 # Let composer impersonation the service account that can change org policies (for demo purposes)
 # This account also will be running Terraform scripts and impersonating this account
 resource "google_service_account_iam_member" "cloudcomposer_service_account_impersonation" {
+  count              = local.heavy_service_count
   service_account_id = "projects/${var.project_id}/serviceAccounts/${var.project_id}@${var.project_id}.iam.gserviceaccount.com"
   role               = "roles/iam.serviceAccountTokenCreator"
-  member             = "serviceAccount:${google_service_account.composer_service_account.email}"
+  member             = "serviceAccount:${google_service_account.composer_service_account[0].email}"
   depends_on         = [google_project_iam_member.composer_service_account_bq_admin_role]
 }
 
 # ActAs role
 resource "google_project_iam_member" "cloudcomposer_act_as" {
+  count   = local.heavy_service_count
   project = var.project_id
   role    = "roles/iam.serviceAccountUser"
-  member  = "serviceAccount:${google_service_account.composer_service_account.email}"
+  member  = "serviceAccount:${google_service_account.composer_service_account[0].email}"
 
   depends_on = [
     google_service_account_iam_member.cloudcomposer_service_account_impersonation
@@ -706,10 +744,12 @@ resource "google_project_iam_member" "cloudcomposer_act_as" {
 
 #fetching latest available Cloud Composer versions in a region for a given project.
 data "google_composer_image_versions" "latest_image" {
+  count  = local.heavy_service_count
   region = var.composer_region
 }
 
 resource "google_composer_environment" "composer_env" {
+  count   = local.heavy_service_count
   project = var.project_id
   name    = "data-analytics-demo-composer-3"
   region  = var.composer_region
@@ -807,8 +847,8 @@ resource "google_composer_environment" "composer_env" {
 
     node_config {
       network         = google_compute_network.default_network.id
-      subnetwork      = google_compute_subnetwork.composer_subnet.id
-      service_account = google_service_account.composer_service_account.name
+      subnetwork      = google_compute_subnetwork.composer_subnet[0].id
+      service_account = google_service_account.composer_service_account[0].name
     }
 
     enable_private_environment = true
@@ -899,6 +939,7 @@ resource "google_bigquery_dataset" "ideshare_llm_curated_dataset" {
 }
 
 resource "google_bigquery_dataset" "aws_omni_biglake_dataset" {
+  count         = local.heavy_service_count
   project       = var.project_id
   dataset_id    = var.aws_omni_biglake_dataset_name
   friendly_name = var.aws_omni_biglake_dataset_name
@@ -907,6 +948,7 @@ resource "google_bigquery_dataset" "aws_omni_biglake_dataset" {
 }
 
 resource "google_bigquery_dataset" "azure_omni_biglake_dataset" {
+  count         = local.heavy_service_count
   project       = var.project_id
   dataset_id    = var.azure_omni_biglake_dataset_name
   friendly_name = var.azure_omni_biglake_dataset_name
@@ -952,6 +994,7 @@ resource "google_compute_firewall" "dataproc_serverless_subnet_firewall_rule" {
 # AWS Region
 ####################################################################################
 resource "google_data_catalog_taxonomy" "business_critical_taxonomy_aws" {
+  count   = local.heavy_service_count
   project = var.project_id
   region  = var.aws_omni_biglake_dataset_region
   # Must be unique accross your Org
@@ -961,7 +1004,8 @@ resource "google_data_catalog_taxonomy" "business_critical_taxonomy_aws" {
 }
 
 resource "google_data_catalog_policy_tag" "low_security_policy_tag_aws" {
-  taxonomy     = google_data_catalog_taxonomy.business_critical_taxonomy_aws.id
+  count        = local.heavy_service_count
+  taxonomy     = google_data_catalog_taxonomy.business_critical_taxonomy_aws[0].id
   display_name = "AWS Low security"
   description  = "A policy tag normally associated with low security items (AWS)"
 
@@ -971,7 +1015,8 @@ resource "google_data_catalog_policy_tag" "low_security_policy_tag_aws" {
 }
 
 resource "google_data_catalog_policy_tag" "high_security_policy_tag_aws" {
-  taxonomy     = google_data_catalog_taxonomy.business_critical_taxonomy_aws.id
+  count        = local.heavy_service_count
+  taxonomy     = google_data_catalog_taxonomy.business_critical_taxonomy_aws[0].id
   display_name = "AWS High security"
   description  = "A policy tag normally associated with high security items (AWS)"
 
@@ -981,7 +1026,8 @@ resource "google_data_catalog_policy_tag" "high_security_policy_tag_aws" {
 }
 
 resource "google_data_catalog_policy_tag_iam_member" "member_aws" {
-  policy_tag = google_data_catalog_policy_tag.low_security_policy_tag_aws.name
+  count      = local.heavy_service_count
+  policy_tag = google_data_catalog_policy_tag.low_security_policy_tag_aws[0].name
   role       = "roles/datacatalog.categoryFineGrainedReader"
   member     = "user:${var.gcp_account_name}"
   depends_on = [
@@ -995,6 +1041,7 @@ resource "google_data_catalog_policy_tag_iam_member" "member_aws" {
 # Azure Region
 ####################################################################################
 resource "google_data_catalog_taxonomy" "business_critical_taxonomy_azure" {
+  count   = local.heavy_service_count
   project = var.project_id
   region  = var.azure_omni_biglake_dataset_region
   # Must be unique accross your Org
@@ -1004,7 +1051,8 @@ resource "google_data_catalog_taxonomy" "business_critical_taxonomy_azure" {
 }
 
 resource "google_data_catalog_policy_tag" "low_security_policy_tag_azure" {
-  taxonomy     = google_data_catalog_taxonomy.business_critical_taxonomy_azure.id
+  count        = local.heavy_service_count
+  taxonomy     = google_data_catalog_taxonomy.business_critical_taxonomy_azure[0].id
   display_name = "Azure Low security"
   description  = "A policy tag normally associated with low security items (Azure)"
 
@@ -1014,7 +1062,8 @@ resource "google_data_catalog_policy_tag" "low_security_policy_tag_azure" {
 }
 
 resource "google_data_catalog_policy_tag" "high_security_policy_tag_azure" {
-  taxonomy     = google_data_catalog_taxonomy.business_critical_taxonomy_azure.id
+  count        = local.heavy_service_count
+  taxonomy     = google_data_catalog_taxonomy.business_critical_taxonomy_azure[0].id
   display_name = "Azure High security"
   description  = "A policy tag normally associated with high security items (Azure)"
 
@@ -1024,7 +1073,8 @@ resource "google_data_catalog_policy_tag" "high_security_policy_tag_azure" {
 }
 
 resource "google_data_catalog_policy_tag_iam_member" "member_azure" {
-  policy_tag = google_data_catalog_policy_tag.low_security_policy_tag_azure.name
+  count      = local.heavy_service_count
+  policy_tag = google_data_catalog_policy_tag.low_security_policy_tag_azure[0].name
   role       = "roles/datacatalog.categoryFineGrainedReader"
   member     = "user:${var.gcp_account_name}"
   depends_on = [
@@ -2010,6 +2060,7 @@ resource "google_spanner_database" "spanner_weather_database" {
 ####################################################################################
 # Subnet for dataflow cluster
 resource "google_compute_subnetwork" "dataflow_subnet" {
+  count                    = local.heavy_service_count
   project                  = var.project_id
   name                     = "dataflow-subnet"
   ip_cidr_range            = "10.4.0.0/16"
@@ -2025,6 +2076,7 @@ resource "google_compute_subnetwork" "dataflow_subnet" {
 
 # Firewall rule for dataflow cluster
 resource "google_compute_firewall" "dataflow_subnet_firewall_rule" {
+  count   = local.heavy_service_count
   project = var.project_id
   name    = "dataflow-firewall"
   network = google_compute_network.default_network.id
@@ -2050,6 +2102,7 @@ resource "google_compute_firewall" "dataflow_subnet_firewall_rule" {
 
 # Service account for dataflow cluster
 resource "google_service_account" "dataflow_service_account" {
+  count        = local.heavy_service_count
   project      = var.project_id
   account_id   = "dataflow-service-account"
   display_name = "Service Account for Dataflow Environment"
@@ -2058,9 +2111,10 @@ resource "google_service_account" "dataflow_service_account" {
 
 # Grant editor (too high) to service account
 resource "google_project_iam_member" "dataflow_service_account_editor_role" {
+  count   = local.heavy_service_count
   project = var.project_id
   role    = "roles/editor"
-  member  = "serviceAccount:${google_service_account.dataflow_service_account.email}"
+  member  = "serviceAccount:${google_service_account.dataflow_service_account[0].email}"
 
   depends_on = [
     google_service_account.dataflow_service_account
@@ -2103,6 +2157,7 @@ resource "google_project_iam_member" "dataflow_service_account_editor_role" {
 
 # Add the Service Account Short Term Token Minter role to a Google-managed service account used by the BigQuery Data Transfer Service
 resource "google_project_service_identity" "service_identity_bigquery_data_transfer" {
+  count   = local.heavy_service_count
   project = var.project_id
   service = "bigquerydatatransfer.googleapis.com"
   depends_on = [
@@ -2114,24 +2169,27 @@ resource "google_project_service_identity" "service_identity_bigquery_data_trans
 
 
 resource "time_sleep" "create_bigquerydatatransfer_account_time_delay" {
+  count           = local.heavy_service_count
   depends_on      = [google_project_service_identity.service_identity_bigquery_data_transfer]
   create_duration = "30s"
 }
 
 
 resource "google_service_account_iam_member" "service_account_impersonation" {
-  service_account_id = google_service_account.composer_service_account.name
+  count              = local.heavy_service_count
+  service_account_id = google_service_account.composer_service_account[0].name
   role               = "roles/iam.serviceAccountTokenCreator"
-  member             = "serviceAccount:${google_project_service_identity.service_identity_bigquery_data_transfer.email}"
+  member             = "serviceAccount:${google_project_service_identity.service_identity_bigquery_data_transfer[0].email}"
   #                    "serviceAccount:service-${var.project_number}@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com"
   depends_on = [time_sleep.create_bigquerydatatransfer_account_time_delay]
 }
 
 
 resource "google_project_iam_member" "iam_member_bigquerydatatransfer_serviceAgent" {
+  count      = local.heavy_service_count
   project    = var.project_id
   role       = "roles/bigquerydatatransfer.serviceAgent"
-  member     = "serviceAccount:${google_project_service_identity.service_identity_bigquery_data_transfer.email}"
+  member     = "serviceAccount:${google_project_service_identity.service_identity_bigquery_data_transfer[0].email}"
   depends_on = [google_service_account_iam_member.service_account_impersonation]
 }
 
@@ -2426,7 +2484,7 @@ resource "null_resource" "colab_runtime_template" {
         },
         dataPersistentDiskSpec: {
           diskType: "pd-standard",
-          diskSizeGb: 500,
+          diskSizeGb: ${var.deploy_lightweight ? 100 : 500},
         },
         networkSpec: {
           enableInternetAccess: false,
@@ -2865,23 +2923,23 @@ output "dataproc_service_account" {
 #}
 
 output "composer_subnet" {
-  value = google_compute_subnetwork.composer_subnet.name
+  value = try(google_compute_subnetwork.composer_subnet[0].name, "")
 }
 
 output "composer_subnet_ip_cidr_range" {
-  value = google_compute_subnetwork.composer_subnet.ip_cidr_range
+  value = try(google_compute_subnetwork.composer_subnet[0].ip_cidr_range, "")
 }
 
 output "composer_service_account" {
-  value = google_service_account.composer_service_account.email
+  value = try(google_service_account.composer_service_account[0].email, "")
 }
 
 output "composer_env_name" {
-  value = google_composer_environment.composer_env.name
+  value = try(google_composer_environment.composer_env[0].name, "")
 }
 
 output "composer_env_dag_bucket" {
-  value = google_composer_environment.composer_env.config.0.dag_gcs_prefix
+  value = try(google_composer_environment.composer_env[0].config.0.dag_gcs_prefix, "")
 }
 
 output "dataproc_serverless_subnet_name" {
@@ -2893,11 +2951,11 @@ output "dataproc_serverless_ip_cidr_range" {
 }
 
 output "business_critical_taxonomy_aws_id" {
-  value = google_data_catalog_taxonomy.business_critical_taxonomy_aws.id
+  value = try(google_data_catalog_taxonomy.business_critical_taxonomy_aws[0].id, "")
 }
 
 output "business_critical_taxonomy_azure_id" {
-  value = google_data_catalog_taxonomy.business_critical_taxonomy_azure.id
+  value = try(google_data_catalog_taxonomy.business_critical_taxonomy_azure[0].id, "")
 }
 
 output "business_critical_taxonomy_id" {
@@ -2917,15 +2975,15 @@ output "biglake_connection" {
 }
 
 output "dataflow_subnet_name" {
-  value = google_compute_subnetwork.dataflow_subnet.name
+  value = try(google_compute_subnetwork.dataflow_subnet[0].name, "")
 }
 
 output "dataflow_subnet_ip_cidr_range" {
-  value = google_compute_subnetwork.dataflow_subnet.ip_cidr_range
+  value = try(google_compute_subnetwork.dataflow_subnet[0].ip_cidr_range, "")
 }
 
 output "dataflow_service_account" {
-  value = google_service_account.dataflow_service_account.email
+  value = try(google_service_account.dataflow_service_account[0].email, "")
 }
 
 output "bigquery_taxi_dataset" {

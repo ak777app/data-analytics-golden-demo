@@ -179,6 +179,8 @@ module "resources" {
   # Use Service Account Impersonation for this step. 
   providers = { google = google.service_principal_impersonation }
 
+  deploy_lightweight = var.deploy_lightweight
+
   gcp_account_name                  = var.gcp_account_name
   project_id                        = local.local_project_id
 
@@ -230,6 +232,8 @@ module "sql-scripts" {
 
   # Use Service Account Impersonation for this step. 
   providers = { google = google.service_principal_impersonation }
+
+  deploy_lightweight = var.deploy_lightweight
 
   gcp_account_name                              = var.gcp_account_name
   project_id                                    = local.local_project_id
@@ -303,6 +307,8 @@ module "deploy-files-module" {
   # Use Service Account Impersonation for this step. 
   providers = { google = google.service_principal_impersonation }
 
+  deploy_lightweight = var.deploy_lightweight
+
   project_id                      = local.local_project_id
   dataplex_region                 = var.dataplex_region
   storage_bucket                  = local.local_storage_bucket
@@ -327,6 +333,31 @@ module "deploy-files-module" {
     time_sleep.service_account_api_activation_time_delay,
     module.org-policies,
     module.resources
+  ]
+}
+
+
+####################################################################################
+# Lightweight / Free Trial: load the demo data without Cloud Composer
+####################################################################################
+module "data-load-lightweight-module" {
+  count  = var.deploy_lightweight && var.lightweight_load_data ? 1 : 0
+  source = "../terraform-modules/data-load-lightweight"
+
+  project_id                             = local.local_project_id
+  bigquery_region                        = var.bigquery_region
+  raw_bucket_name                        = module.resources.gcs_raw_bucket
+  processed_bucket_name                  = module.resources.gcs_processed_bucket
+  code_bucket_name                       = module.resources.gcs_code_bucket
+  rideshare_raw_bucket_name              = module.resources.gcs_rideshare_lakehouse_raw_bucket
+  bigquery_rideshare_llm_curated_dataset = module.resources.bigquery_rideshare_llm_curated_dataset
+  curl_impersonation                     = local.local_curl_impersonation
+  taxi_data_years                        = var.lightweight_taxi_data_years
+
+  depends_on = [
+    module.resources,
+    module.sql-scripts,
+    module.deploy-files-module
   ]
 }
 
@@ -606,23 +637,23 @@ output "dataproc_service_account" {
 #}
 
 output "composer_subnet" {
-  value = module.resources.composer_subnet
+  value = try(module.resources.composer_subnet, "")
 }
 
 output "composer_subnet_ip_cidr_range" {
-  value = module.resources.composer_subnet_ip_cidr_range
+  value = try(module.resources.composer_subnet_ip_cidr_range, "")
 }
 
 output "composer_service_account" {
-  value = module.resources.composer_service_account
+  value = try(module.resources.composer_service_account, "")
 }
 
 output "composer_env_name" {
-  value = module.resources.composer_env_name
+  value = try(module.resources.composer_env_name, "")
 }
 
 output "composer_env_dag_bucket" {
-  value = module.resources.composer_env_dag_bucket
+  value = try(module.resources.composer_env_dag_bucket, "")
 }
 
 output "dataproc_serverless_subnet_name" {
@@ -634,11 +665,11 @@ output "dataproc_serverless_ip_cidr_range" {
 }
 
 output "business_critical_taxonomy_aws_id" {
-  value = module.resources.business_critical_taxonomy_aws_id
+  value = try(module.resources.business_critical_taxonomy_aws_id, "")
 }
 
 output "business_critical_taxonomy_azure_id" {
-  value = module.resources.business_critical_taxonomy_azure_id
+  value = try(module.resources.business_critical_taxonomy_azure_id, "")
 }
 
 output "business_critical_taxonomy_id" {
@@ -658,15 +689,15 @@ output "biglake_connection" {
 }
 
 output "dataflow_subnet_name" {
-  value = module.resources.dataflow_subnet_name
+  value = try(module.resources.dataflow_subnet_name, "")
 }
 
 output "dataflow_subnet_ip_cidr_range" {
-  value = module.resources.dataflow_subnet_ip_cidr_range
+  value = try(module.resources.dataflow_subnet_ip_cidr_range, "")
 }
 
 output "dataflow_service_account" {
-  value = module.resources.dataflow_service_account
+  value = try(module.resources.dataflow_service_account, "")
 }
 
 output "bigquery_taxi_dataset" {

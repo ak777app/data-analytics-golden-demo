@@ -31,11 +31,20 @@
 # gcloud auth application-default login
 
 # 1 - Create a new project
+#     GCP Free Trial (no organization): create the project by hand in the Cloud Console
+#     (IAM & Admin | Manage Resources | Create Project, Organization = "No organization")
+#     or run: gcloud projects create my-project
+#     Link it to your Free Trial billing account (Billing | Link a billing account)
+#     or run: gcloud billing projects link my-project --billing-account=XXXXXX-XXXXXX-XXXXXX
 
 # 2 - Grant your user Owner IAM access to the new project
+#     The project creator is Owner by default. Otherwise run:
+#     gcloud projects add-iam-policy-binding my-project --member="user:your-name@gmail.com" --role="roles/owner"
 
 # 3 - Disable the following Org Policies by hand (or have your IT department do it for you).
 #     These can be disabled at the project level
+#     NOT APPLICABLE to a GCP Free Trial / no-organization project: there is no organization,
+#     so no org policies are inherited and this step (and step 5) can be skipped.
 #     - requireOsLogin = false
 #     - requireShieldedVm = false
 #     - allowedIngressSettings = allow all
@@ -43,11 +52,18 @@
 #     - restrictVpcPeering = allow all
 
 # 4 - Run the below script and replace the following variables
+#     project_number: gcloud projects describe my-project --format="value(projectNumber)"
 gcp_account_name="your-name@your-domain.com"
 project_id="my-project"
 project_number="000000000000"
 
+# Free Trial / lightweight mode (default true). Skips Composer, Dataflow, Spanner, Data Fusion,
+# Datastream, Cloud SQL, Compute VMs, Data Transfer Service and OMNI.
+# Set to false on a paid account to deploy the full demo.
+deploy_lightweight="true"
+
 # 5 - When the script is complete, reenable the following Org Policies (or revert to parent policy)
+#     NOT APPLICABLE to a GCP Free Trial / no-organization project (see step 3).
 #     - (DO NOT RE-ENABLE) requireOsLogin 
 #     - (RE-ENABLE) requireShieldedVm 
 #     - (RE-ENABLE) allowedIngressSettings 
@@ -71,7 +87,8 @@ terraform apply \
   -var="gcp_account_name=${gcp_account_name}" \
   -var="project_id=${project_id}" \
   -var="project_number=${project_number}" \
-  -var="org_id=0"
+  -var="org_id=0" \
+  -var="deploy_lightweight=${deploy_lightweight}"
 
 
 terraform_exit_code=$?

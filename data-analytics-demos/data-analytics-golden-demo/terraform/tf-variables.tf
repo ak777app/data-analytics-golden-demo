@@ -291,6 +291,24 @@ variable "colab_enterprise_region" {
 ########################################################################################################
 # Google specific values (you need to setup your own OMNI)
 ########################################################################################################
+variable "deploy_lightweight" {
+  type        = bool
+  description = "Free-trial friendly deployment (single project, no org, $300 credit, restricted quotas). When true: Cloud Composer, Dataflow, Spanner, Data Fusion, Datastream, Cloud SQL, Compute VMs, the Data Transfer Service copy and OMNI (AWS/Azure) are NOT deployed. BigQuery, Vertex AI / Colab Enterprise, Looker Studio views, Pub/Sub BigQuery subscription streaming and BigQuery serverless Spark remain. Set to false on a paid account to deploy everything."
+  default     = true
+}
+
+variable "lightweight_load_data" {
+  type        = bool
+  description = "Only used when deploy_lightweight = true. Copies the sample data and hydrates the BigQuery tables without Cloud Composer (terraform-modules/data-load-lightweight)."
+  default     = true
+}
+
+variable "lightweight_taxi_data_years" {
+  type        = list(string)
+  description = "Only used when deploy_lightweight = true. NYC taxi years (2019-2025) to load. The rideshare demo needs 2020-2022. Each year of yellow + green Parquet is ~1 GB in GCS."
+  default     = ["2020", "2021", "2022"]
+}
+
 variable "shared_demo_project_id" {
   type        = string
   description = "The name of a shared project that holds the OMNI slots and other sample data "
@@ -396,5 +414,6 @@ locals {
   local_curl_impersonation = var.environment == "GITHUB_ENVIRONMENT" ? "--impersonate-service-account=${var.deployment_service_account_name}" : ""
 
   # Make sure you use a Federated Identity: https://cloud.google.com/bigquery/docs/omni-azure-create-connection#federated-identity
-  local_azure_omni_biglake_connection = "projects/${var.shared_demo_project_id}/locations/${var.azure_omni_biglake_dataset_region}/connections/bq_omni_azure_adlsgen2"
+  # OMNI requires a shared demo project (not available in lightweight / free-trial mode)
+  local_azure_omni_biglake_connection = var.deploy_lightweight ? "" : "projects/${var.shared_demo_project_id}/locations/${var.azure_omni_biglake_dataset_region}/connections/bq_omni_azure_adlsgen2"
 }
